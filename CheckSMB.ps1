@@ -50,7 +50,7 @@ while ($true) {
     if ($files) {
         $count = @($files).Count
         "## SMB open files($count):" | out-string
-        $files | out-string
+        $files | select FileId,SessionId,Path,ClientComputerName,ClientUserName | Format-Table | out-string
     }
     else {
         "## No SMB open file." | out-string
