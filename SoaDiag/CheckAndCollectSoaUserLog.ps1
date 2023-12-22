@@ -5,24 +5,30 @@ Search in SOA user log files for a message and collect matched log files.
 .DESCRIPTION
 #>
 
+[CmdletBinding(DefaultParameterSetName = 'Collect')]
 param(
     # A list of SOA job ids.
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory)]
     [string[]]$Jobs,
 
     # Patterns to search in log files.
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory)]
     [string[]]$Patterns,
 
     # A directory where the files will be copied to.
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory, ParameterSetName = 'Collect')]
     [string]$To,
 
     # Credential of HPC Pack admin, which is returned by Get-Credential.
+    [Parameter(ParameterSetName = 'Collect')]
     $Credential,
 
     # A list of computer names. When absent, all HPC Pack computer nodes that are 'Online' will be counted.
-    [string[]]$Computers
+    [string[]]$Computers,
+
+    # Only check log, do not copy any files.
+    [Parameter(ParameterSetName = 'Check')]
+    [switch]$CheckOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,7 +37,7 @@ $InformationPreference = 'Continue'
 $CheckSoaUserLog = Join-Path $PSScriptRoot 'CheckSoaUserLog.ps1' -Resolve
 $CollectSoaUserLog = Join-Path $PSScriptRoot 'CollectSoaUserLog.ps1' -Resolve
 
-if (!$Credential) {
+if (!$CheckOnly -and !$Credential) {
     $Credential = Get-Credential
 }
 
@@ -43,10 +49,26 @@ if (!$Computers) {
 $count = @($Computers).Count
 Write-Information "# $count nodes to check"
 
+$fcount = 0
 foreach ($job in $Jobs) {
     Write-Information "# Checking for job $job..."
 
     &$CheckSoaUserLog -Computers $Computers -JobId $job -Patterns $Patterns |
-        %{ &$CollectSoaUserLog -Computer $_.Computer -Files $_.Files -To $To -Credential $Credential }
+        %{
+            if (!$CheckOnly) {
+                &$CollectSoaUserLog -Computer $_.Computer -Files $_.Files -To $To -Credential $Credential
+            }
+            else {
+                Write-Output @{ Computer = $_.Computer; Files = $_.Files }
+            }
+            $fcount += @($_.Files).Count
+        }
+}
+
+if ($fcount -gt 0) {
+    Write-Information "# $fcount files are found."
+}
+else {
+    Write-Information "# No file is found."
 }
 
