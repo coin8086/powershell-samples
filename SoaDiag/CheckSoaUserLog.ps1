@@ -1,12 +1,14 @@
 <#
 .SYNOPSIS
-Search for a message in user log files for a given SOA job.
+Search for patterns in user log files for a given SOA job.
 
 .DESCRIPTION
 Use it like this
 
 $nodes = Get-HpcNode |?{ $_.noderole -eq 'ComputeNode' -and $_.nodestate -eq 'Online' } | %{ $_.NetBiosName }
-.\SearchSoaUserLog.ps1 -Computers $nodes -JobId 53 -Message "message you want to search for"
+.\SearchSoaUserLog.ps1 -Computers $nodes -JobId 53 -Patterns 'your pattern 1', 'your pattern 2'
+
+The $Patterns is passed to Select-String and the conditions of $Patterns are "OR"ed together, meaning any matched condition counts.
 #>
 
 param(
@@ -15,10 +17,10 @@ param(
     [Alias("j")]
     [string]$JobId,
 
-    # Message to search in log files.
+    # Patterns to search in log files.
     [Parameter(Mandatory=$true)]
-    [Alias("m")]
-    [string]$Message,
+    [Alias("p")]
+    [string[]]$Patterns,
 
     # A list of computer names. When absent, search will be performed on local computer.
     [Alias("c")]
@@ -37,7 +39,7 @@ $checkLog = {
         [string]$JobId,
 
         [Parameter(Mandatory=$true)]
-        [string]$Message,
+        [string]$Patterns,
 
         # NOTE: No way to pass in a switch parameter directly in -ArgumentList!
         # So here a boolean type is used.
@@ -92,12 +94,13 @@ $checkLog = {
     $jobLogDir = Join-Path -Path $userLogDir -ChildPath "SOA\HpcServiceHost\$JobId"
 
     if (!(Test-Path -Path $jobLogDir -PathType Container)) {
-        logWarn "Directory '$jobLogDir' doesn't exist. Maybe SOA job '$JobId' was not run on this computer."
+        logWarn "Directory '$jobLogDir' does not exist. Maybe SOA job '$JobId' did not run on this computer."
         return
     }
 
     # 2. Convert *.bin binary file to *.log text file by LogParser *if not already*
 
+    # NOTE: logparser.exe is from HPC Pack.
     $logParser = Get-Command logparser.exe
 
     $binFiles = dir $jobLogDir -Include *.bin -Recurse
@@ -118,7 +121,7 @@ $checkLog = {
     $count = @($logFiles).Count
     logInfo "Searching $count .log files..."
 
-    $files = $logFiles | sls $Message -List | %{ $_.Path }
+    $files = $logFiles | sls $Patterns -List | %{ $_.Path }
 
     if ($files) {
         $count = @($files).Count
@@ -131,7 +134,7 @@ $checkLog = {
     }
 }
 
-$argList = @($JobId, $Message, $($VerboseOut))
+$argList = @($JobId, $Patterns, $($VerboseOut))
 
 if (!$Computers) {
     # NOTE: Paramter splatting here. So "@xxx" not "$xxx".
