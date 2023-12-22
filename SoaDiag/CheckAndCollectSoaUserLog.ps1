@@ -3,6 +3,10 @@
 Search in SOA user log files for a message and collect matched log files.
 
 .DESCRIPTION
+Use it like this
+
+$cred = Get-Credential # The account should be available on all $Computers. Typically it's an HPC PACK admin.
+.\CheckAndCollectSoaUserLog.ps1 -Jobs 100..110 -Patterns 'pattern 1', 'pattern 2', 'pattern 3' -To 'a local dir' -Credential $cred
 #>
 
 [CmdletBinding(DefaultParameterSetName = 'Collect')]
