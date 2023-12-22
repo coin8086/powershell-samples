@@ -39,7 +39,7 @@ $checkLog = {
         [string]$JobId,
 
         [Parameter(Mandatory=$true)]
-        [string]$Patterns,
+        [string[]]$Patterns,
 
         # NOTE: No way to pass in a switch parameter directly in -ArgumentList!
         # So here a boolean type is used.
@@ -120,13 +120,18 @@ $checkLog = {
     $logFiles = dir $jobLogDir -Include *.log -Recurse
     $count = @($logFiles).Count
     logInfo "Searching $count .log files..."
+    if ($VerboseOut) {
+        logInfo ($logFiles | out-string)
+    }
 
     $files = $logFiles | sls $Patterns -List | %{ $_.Path }
 
     if ($files) {
         $count = @($files).Count
         logInfo "Found $count matched files."
-
+        if ($VerboseOut) {
+            logInfo ($files | out-string)
+        }
         Write-Output @{ Computer = $env:COMPUTERNAME; Files = $files }
     }
     else {
