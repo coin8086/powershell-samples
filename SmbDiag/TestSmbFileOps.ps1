@@ -1,8 +1,20 @@
+<#
+.SYNOPSIS
+Test SMB file read and write.
+
+.DESCRIPTION
+The $FilePath should be a SMB path. All the $Computers will read the file and write to the same SMB share backup files that have exact the same content but different postfixes. So make sure you have enough free space in the SMB share for the test. The required space is the file size timing the $Parallel. The backup files will be deleted at the end of test.
+
+$Parallel determins how many processes on a computer to read the file and write a backup at the same time.
+
+When $Readonly is specified, no file write will be performed.
+#>
+
 param(
     [Parameter(Mandatory)]
     [string]$FilePath,
 
-    [int]$NumOfParallel = 10,
+    [int]$Parallel = 16,
 
     [switch]$Readonly,
 
@@ -20,7 +32,7 @@ $testFileOps = {
         [string]$FilePath,
 
         [Parameter(Mandatory)]
-        [int]$NumOfParallel,
+        [int]$Parallel,
 
         [bool]$Readonly = $false
     )
@@ -33,7 +45,7 @@ $testFileOps = {
     logInfo "Opening $FilePath ..."
 
     $jobs = @()
-    for ($i = 1; $i -le $NumOfParallel; $i++) {
+    for ($i = 1; $i -le $Parallel; $i++) {
         $j = Start-Job -ScriptBlock {
             param(
                 [Parameter(Mandatory)]
@@ -77,7 +89,7 @@ $testFileOps = {
     logInfo "Done"
 }
 
-$argList = @($FilePath, $NumOfParallel, $($Readonly))
+$argList = @($FilePath, $Parallel, $($Readonly))
 
 if (!$Computers) {
     &$testFileOps @argList
