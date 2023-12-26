@@ -1,10 +1,10 @@
 param(
-    [Parameter(Mandatory=$true)]
-    [Alias("f")]
+    [Parameter(Mandatory)]
     [string]$FilePath,
 
-    [Alias("n")]
     [int]$NumOfParallel = 10,
+
+    [switch]$Readonly,
 
     [string[]]$Computers,
 
@@ -12,45 +12,75 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$InformationPreference = 'Continue'
 
-$openFile = {
+$testFileOps = {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory)]
         [string]$FilePath,
 
-        [Parameter(Mandatory=$true)]
-        [int]$NumOfParallel
+        [Parameter(Mandatory)]
+        [int]$NumOfParallel,
+
+        [bool]$Readonly = $false
     )
 
-    # $ErrorActionPreference = 'Stop'
+    function logInfo {
+        param([string] $msg)
+        Write-Information "## [$env:COMPUTERNAME] $msg"
+    }
 
-    "[$env:COMPUTERNAME] Opening $FilePath ..." | out-string
+    logInfo "Opening $FilePath ..."
 
     $jobs = @()
     for ($i = 1; $i -le $NumOfParallel; $i++) {
         $j = Start-Job -ScriptBlock {
             param(
-                [Parameter(Mandatory=$true)]
+                [Parameter(Mandatory)]
                 [string]$FilePath,
+
+                [bool]$Readonly = $false,
 
                 [int]$Index
             )
 
-            "[$env:COMPUTERNAME][$Index] Opening $FilePath in process $PID..." | out-string
+            function logInfoIdx {
+                param([string] $msg)
+                Write-Information "## [$env:COMPUTERNAME][$Index] $msg"
+            }
+
+            logInfoIdx "Opening $FilePath in process $PID..."
             $bytes = [System.IO.File]::ReadAllBytes($FilePath)
-            "[$env:COMPUTERNAME][$Index] Read $($bytes.Count) bytes" | out-string
-        } -ArgumentList @($FilePath, $i)
+            logInfoIdx "Read $($bytes.Count) bytes"
+
+            if (!$Readonly) {
+                $writePath = "$FilePath.SmbDiag.$env:COMPUTERNAME.$Index"
+                logInfoIdx "Writing to $writePath..."
+                [System.IO.File]::WriteAllBytes($writePath, $bytes)
+                logInfoIdx "Done Writing"
+            }
+
+        } -ArgumentList @($FilePath, $Readonly, $i)
         $jobs += $j
     }
 
-    "[$env:COMPUTERNAME] Wait..." | out-string
+    logInfo "Waiting..."
 
     $jobs | Wait-Job | Receive-Job
     $jobs | Remove-Job
+
+    if (!$Readonly) {
+        logInfo "Cleaning..."
+        dir "$FilePath.SmbDiag.$env:COMPUTERNAME.*" | rm
+    }
+
+    logInfo "Done"
 }
 
+$argList = @($FilePath, $NumOfParallel, $($Readonly))
+
 if (!$Computers) {
-    &$openFile $FilePath $NumOfParallel
+    &$testFileOps @argList
 }
 else {
     # NOTE: refer to the following link for how to read a file in a SMB share.
@@ -60,5 +90,5 @@ else {
     }
     Enable-WSManCredSSP -Role Client -DelegateComputer $Computers -Force | out-null
     Invoke-Command -ComputerName $Computers -ScriptBlock { Enable-WSManCredSSP -Role Server -Force | out-null }
-    Invoke-Command -ComputerName $Computers -Authentication 'CredSSP' -Credential $Credential -ThrottleLimit $([int]::MaxValue) -ScriptBlock $openFile -ArgumentList @($FilePath, $NumOfParallel)
+    Invoke-Command -ComputerName $Computers -Authentication 'CredSSP' -Credential $Credential -ThrottleLimit $([int]::MaxValue) -ScriptBlock $testFileOps -ArgumentList $argList
 }
