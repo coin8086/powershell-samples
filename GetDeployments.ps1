@@ -35,4 +35,13 @@ function GetDeploymentAndSecret {
 $json = cat -Raw $Path | ConvertFrom-Json
 
 # NOTE: $json is a custom PSObject, not a Hashtable. So $json['xxx'] is not available.
-$json.'Truncated Data'.Detections | %{ GetDeploymentAndSecret $_.Source, $_.Secret }
+$detections = $json.Detections
+if (!$detections) {
+    Write-Information 'Processing truncated data...'
+    $detections = $json.'Truncated Data'.Detections
+}
+else {
+    Write-Information 'Processing data...'
+}
+
+$detections | %{ GetDeploymentAndSecret $_.Source $_.Secret }
