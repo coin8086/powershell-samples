@@ -50,6 +50,3 @@ if (!$WhatIf -and ($count2 -gt 0)) {
     Close-SmbSession $sessionIds -Force
 }
 
-$sessions = Get-SmbSession
-$count = @($sessions).count
-logInfo "$count SMB session(s) remains after cleaning."
