@@ -57,21 +57,29 @@ function GetAccountName {
 $accounts = Import-Csv $Path
 $failed = New-Object System.Collections.Generic.List[System.Object]
 $total = 0
+$lastSub = ''
 
 $accounts | %{
-    if (!$_.ResourceId) {
+    $rid = $_.ResourceId
+    if (!$rid) {
         Write-Warning "Invalid ResourceId"
         return
     }
-    Write-Information "Processing $($_.ResourceId)"
+    Write-Information "Processing $rid"
     try {
-        $name = GetAccountName $_.ResourceId
-        DisableLocalAuth -ResourceGroup $_.ResourceGroup -AccountName $name -Subscription $_.SubscriptionId -WhatIf $WhatIf
+        $name = GetAccountName $rid
+        if ($lastSub -eq $_.SubscriptionId) {
+            DisableLocalAuth -ResourceGroup $_.ResourceGroup -AccountName $name -WhatIf $WhatIf
+        }
+        else {
+            DisableLocalAuth -ResourceGroup $_.ResourceGroup -AccountName $name -Subscription $_.SubscriptionId -WhatIf $WhatIf
+            $lastSub = $_.SubscriptionId # If there's an exception in DisableLocalAuth then do not change $lastSub
+        }
     }
     catch {
         Write-Warning "Failed disabling the account $name"
         Write-Warning $_
-        $failed.Add($_.ResourceId)
+        $failed.Add($rid)
     }
     $total += 1
 }
