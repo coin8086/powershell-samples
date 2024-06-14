@@ -41,7 +41,7 @@ function DisableLocalAuth {
     Write-Information "Disabling $AccountName of $ResourceGroup"
     if (!$WhatIf) {
         try {
-            Set-AzStorageAccount -ResourceGroupName $ResourceGroup -AccountName $AccountName -AllowSharedKeyAccess $false
+            Set-AzStorageAccount -ResourceGroupName $ResourceGroup -AccountName $AccountName -AllowSharedKeyAccess $false | Out-Null
         }
         catch {
             $ignore = $false
