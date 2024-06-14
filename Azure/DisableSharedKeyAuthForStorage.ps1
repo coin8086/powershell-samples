@@ -30,6 +30,8 @@ function DisableLocalAuth {
 
         [string]$Subscription,
 
+        [bool]$IgnoreWhenNotFound = $true,
+
         [bool]$WhatIf
     )
     if ($Subscription) {
@@ -38,7 +40,22 @@ function DisableLocalAuth {
     }
     Write-Information "Disabling $AccountName of $ResourceGroup"
     if (!$WhatIf) {
-        Set-AzStorageAccount -ResourceGroupName $ResourceGroup -AccountName $AccountName -AllowSharedKeyAccess $false
+        try {
+            Set-AzStorageAccount -ResourceGroupName $ResourceGroup -AccountName $AccountName -AllowSharedKeyAccess $false
+        }
+        catch {
+            $ignore = $false
+            if ($IgnoreWhenNotFound) {
+                $code = $_.Exception.Response.StatusCode
+                if ($code -eq 404) {
+                    $ignore = $true
+                    Write-Warning "$AccountName of $ResourceGroup is not found!"
+                }
+            }
+            if (!$ignore) {
+                throw
+            }
+        }
     }
 }
 
