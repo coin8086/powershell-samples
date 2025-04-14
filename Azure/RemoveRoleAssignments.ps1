@@ -16,6 +16,18 @@ param (
 $ErrorActionPreference = 'Stop'
 $InformationPreference = 'Continue'
 
+$baseName = Split-Path -Path $PSCommandPath -LeafBase
+$logFIle = Join-Path $PSScriptRoot "$baseName.log"
+
+function log {
+  param (
+      [Parameter(Mandatory)]
+      [string]
+      $msg
+  )
+  "$(Get-Date -Format o) $msg" | Out-File -FilePath $logFIle -Append
+}
+
 foreach ($SubscriptionId in $SubscriptionList) {
   $scope = "/subscriptions/$SubscriptionId"
 
@@ -23,28 +35,38 @@ foreach ($SubscriptionId in $SubscriptionList) {
   Write-Information "For scope '$scope':"
 
   try {
-    $assignments = Get-AzRoleAssignment -Scope $scope | Where-Object { $_.Scope -eq $scope }
+    $assignments = Get-AzRoleAssignment -Scope $scope # | Where-Object { $_.Scope -eq $scope }
   }
   catch {
-    Write-Warning "Cannot get role assignments. Error: $_"
+    $log = "Cannot get role assignments in scope $scope. Error: $_"
+    Write-Warning $log
+    log $log
     continue
   }
 
   foreach ($one in $assignments) {
+    if ($one.ObjectType -ne 'User') {
+      continue
+    }
+
+    $assignmentInfo = "user '$($one.DisplayName)' ($($one.SignInName)) of role '$($one.RoleDefinitionName)' in scope $($one.Scope)"
+
     if (!($one.SignInName -in $ExemptList)) {
-      Write-Information "++ Remove user '$($one.DisplayName)' ($($one.ObjectId)) of role '$($one.RoleDefinitionName)'"
+      Write-Information "++ Remove $assignmentInfo"
+
       if (!$WhatIf) {
         try {
-          Remove-AzRoleAssignment -Scope $scope -RoleDefinitionId $one.RoleDefinitionId -ObjectId $one.ObjectId
+          Remove-AzRoleAssignment -Scope $one.Scope -RoleDefinitionId $one.RoleDefinitionId -ObjectId $one.ObjectId
         }
         catch {
-          Write-Warning "Cannot remove user '$($one.DisplayName)' ($($one.ObjectId)) of role '$($one.RoleDefinitionName)'. Error: $_"
+          $log = "Cannot remove $assignmentInfo. Error: $_"
+          Write-Warning $log
+          log $log
         }
       }
     }
     else {
-      Write-Information "-- Exempt user '$($one.DisplayName)' ($($one.SignInName)) of role '$($one.RoleDefinitionName)'"
+      Write-Information "-- Exempt $assignmentInfo"
     }
   }
 }
-
