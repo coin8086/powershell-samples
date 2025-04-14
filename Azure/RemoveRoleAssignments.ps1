@@ -6,7 +6,7 @@ param (
 
   # A list of the SignInName (one@domain.com). These users will be exempt from removing role on the subscription.
   [string[]]
-  $ExcludeList=@(),
+  $ExemptList=@(),
 
   # Try the command without real removal
   [switch]
@@ -31,7 +31,7 @@ foreach ($SubscriptionId in $SubscriptionList) {
   }
 
   foreach ($one in $assignments) {
-    if (!($one.SignInName -in $ExcludeList)) {
+    if (!($one.SignInName -in $ExemptList)) {
       Write-Information "++ Remove user '$($one.DisplayName)' ($($one.ObjectId)) of role '$($one.RoleDefinitionName)'"
       if (!$WhatIf) {
         try {
