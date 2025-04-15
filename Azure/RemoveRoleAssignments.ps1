@@ -49,7 +49,7 @@ foreach ($SubscriptionId in $SubscriptionList) {
       continue
     }
 
-    $assignmentInfo = "user '$($one.DisplayName)' ($($one.SignInName)) of role '$($one.RoleDefinitionName)' in scope $($one.Scope)"
+    $assignmentInfo = "user '$($one.DisplayName)' ($($one.SignInName)) of role '$($one.RoleDefinitionName)' at scope $($one.Scope)"
 
     if (!($one.SignInName -in $ExemptList)) {
       Write-Information "++ Remove $assignmentInfo"
