@@ -1,10 +1,10 @@
 param (
-  # A list of subscription id, on which role assignments will be removed
+  # A list of subscription id, in which role assignments will be removed
   [Parameter(Mandatory)]
   [string[]]
   $SubscriptionList,
 
-  # A list of the SignInName (one@domain.com). These users will be exempt from removing role on the subscription.
+  # A list of SignInName (one@domain.com), who will be exempt from being removed role in the subscription
   [string[]]
   $ExemptList=@(),
 
