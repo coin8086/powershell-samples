@@ -45,8 +45,13 @@ $removeResourceGroup = {
   )
 
   $ErrorActionPreference = 'Stop'
+  $InformationPreference = 'Continue'
 
-  Get-AzResourceLock -ResourceGroupName $Name | Remove-AzResourceLock -Force -WhatIf:$WhatIf
+  Get-AzResourceLock -ResourceGroupName $Name | ForEach-Object {
+    Write-Information "Remove lock '$($_.Name)' on '$($_.ResourceId)'"
+    $_
+  } | Remove-AzResourceLock -Force -WhatIf:$WhatIf
+
   Remove-AzResourceGroup -Name $Name -Force -WhatIf:$WhatIf
 }
 
