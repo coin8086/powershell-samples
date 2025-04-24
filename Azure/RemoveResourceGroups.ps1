@@ -86,6 +86,11 @@ foreach ($SubscriptionId in $SubscriptionList) {
     }
   }
 
+  if ($jobs.Count -eq 0) {
+    Write-Information "Nothing to remove"
+    continue
+  }
+
   Write-Information "Waiting for $($jobs.Count) job(s) ..."
 
   foreach ($name in $jobs.Keys) {
